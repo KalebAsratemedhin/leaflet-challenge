@@ -1,5 +1,3 @@
-// src/priorityHelper.js
-
 /**
  * Determines which group takes priority based on the rules.
  * @param {Object} groupA
