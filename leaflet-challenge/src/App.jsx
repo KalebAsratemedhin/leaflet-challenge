@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { initialGroupData, countryNameMap } from './data';
+import { initialGroupData, countryNameMap, geoJsonToShortNameMap } from './data'; 
 import { processCountryPriorities } from './priorityHelper';
 import MapComponent from './MapComponent';
+import './App.css';
 import geoJson from "./data/countries.geo.json"
+
 
 function App() {
   const [geoJsonData, setGeoJsonData] = useState(geoJson);
+
   const [selectedGroup, setSelectedGroup] = useState("All");
 
   const countryDisplayData = useMemo(() => {
@@ -15,7 +18,7 @@ function App() {
   const groupNames = useMemo(() => {
     const names = new Set(initialGroupData.map(g => g.Group));
     return ["All", ...Array.from(names).sort()];
-  }, []); 
+  }, []);
 
 
   const handleGroupChange = (event) => {
@@ -38,7 +41,9 @@ function App() {
       </div>
       <MapComponent
         geoJsonData={geoJsonData}
-        countryDisplayData={countryDisplayData}
+        countryDisplayData={countryDisplayData} // For "All" view (priority logic)
+        initialGroupData={initialGroupData}     // For specific group view (membership logic)
+        geoJsonToShortNameMap={geoJsonToShortNameMap} // For mapping
         selectedGroup={selectedGroup}
       />
     </div>

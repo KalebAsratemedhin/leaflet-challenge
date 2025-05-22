@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet'; 
+import L from 'leaflet';
+
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -10,62 +11,95 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
+const defaultStyle = {
+    fillColor: '#CCCCCC', 
+    weight: 0.5,
+    opacity: 0.4,
+    color: 'grey',
+    fillOpacity: 0.2
+};
 
-const MapComponent = ({ geoJsonData, countryDisplayData, selectedGroup }) => {
+const highlightedStyleBase = { 
+    weight: 1,
+    opacity: 1,
+    color: 'white', 
+    dashArray: '3',
+    fillOpacity: 0.7
+};
+
+const MapComponent = ({
+  geoJsonData,
+  countryDisplayData,     
+  initialGroupData,       // For specific group view
+  geoJsonToShortNameMap,  // For mapping GeoJSON name back to short name
+  selectedGroup
+}) => {
   const geoJsonLayerRef = useRef(null);
 
   useEffect(() => {
-    if (geoJsonLayerRef.current) {
+    if (geoJsonLayerRef.current && geoJsonData) {
       geoJsonLayerRef.current.clearLayers().addData(geoJsonData);
     }
-  }, [geoJsonData, selectedGroup]); // Re-render GeoJSON when data or filter changes
+  }, [geoJsonData]);
 
   const onEachFeature = (feature, layer) => {
-    const countryName = feature.properties.ADMIN || feature.properties.name; // Adjust based on your GeoJSON
-    const displayInfo = countryDisplayData[countryName];
+    const geoJsonCountryName = feature.properties.ADMIN || feature.properties.name; 
+    const shortCountryName = geoJsonToShortNameMap[geoJsonCountryName];
 
-    if (displayInfo) {
-      if (selectedGroup !== "All" && displayInfo.groupName !== selectedGroup) {
-        // If not "All" and country's winning group doesn't match selected, don't style or add popup
-        layer.setStyle({
-            fillColor: 'transparent', // or some default non-highlight color
-            weight: 0.5,
-            opacity: 0.3,
-            color: 'grey',
-            fillOpacity: 0.1
-        });
-        return;
-      }
+    let styleToApply = { ...defaultStyle }; 
+    let popupContent = null;
 
-      layer.setStyle({
-        fillColor: displayInfo.color,
-        weight: 1,
-        opacity: 1,
-        color: 'white',
-        dashArray: '3',
-        fillOpacity: 0.7
-      });
-
-      const stats = displayInfo.stats;
-      const popupContent = `
-        <strong>${countryName} (Group: ${stats.Group})</strong>
-        <p>Up Votes: ${stats["Up Votes"]}</p>
-        <p>Type: ${stats["Threat OR Opportunity"]}</p>
-        <p>Time Posted: ${stats["Time Posted"]}</p>
-        <p>Start Date: ${stats["Start Date"]}</p>
-        <p>End Date: ${stats["End Date"]}</p>
-        <p>Display Colour: ${stats["Display Colour"]}</p>
-      `;
-      layer.bindPopup(popupContent);
+    if (selectedGroup === "All") {
+        const displayInfo = countryDisplayData[geoJsonCountryName];
+        if (displayInfo) {
+            styleToApply = {
+                ...highlightedStyleBase,
+                fillColor: displayInfo.color,
+            };
+            const stats = displayInfo.stats; 
+            popupContent = `
+                <strong>${geoJsonCountryName} (Priority Group: ${stats.Group})</strong>
+                <p>Up Votes: ${stats["Up Votes"]}</p>
+                <p>Type: ${stats["Threat OR Opportunity"]}</p>
+                <p>Time Posted: ${stats["Time Posted"]}</p>
+                <p>Start Date: ${stats["Start Date"]}</p>
+                <p>End Date: ${stats["End Date"]}</p>
+                <p>Display Colour: ${stats["Display Colour"]}</p>
+            `;
+        }
     } else {
-        // Style for countries not in our data or filtered out by group mismatch (when not "All")
-         layer.setStyle({
-            fillColor: '#CCCCCC', // Default for countries not in data
-            weight: 0.5,
-            opacity: 0.3,
-            color: 'grey',
-            fillOpacity: 0.3
-        });
+        // Specific group selected: Check if this country is a member of the selected group
+        const groupDataEntryForSelected = initialGroupData.find(g => g.Group === selectedGroup);
+
+        if (groupDataEntryForSelected && shortCountryName && groupDataEntryForSelected.parsedCountries.includes(shortCountryName)) {
+            // This country IS part of the currently selected group
+            styleToApply = {
+                ...highlightedStyleBase,
+                fillColor: groupDataEntryForSelected["Display Colour"], // Use selected group's color
+            };
+            const stats = groupDataEntryForSelected; // Use selected group's stats
+            popupContent = `
+                <strong>${geoJsonCountryName} (Viewing Group: ${stats.Group})</strong>
+                <p>Countries in this group entry: ${stats["Countries in Group"]}</p>
+                <p>Up Votes (for this group): ${stats["Up Votes"]}</p>
+                <p>Type (for this group): ${stats["Threat OR Opportunity"]}</p>
+                <p>Time Posted (for this group): ${stats["Time Posted"]}</p>
+                <p>Start Date (for this group): ${stats["Start Date"]}</p>
+                <p>End Date (for this group): ${stats["End Date"]}</p>
+                <p>Display Colour (for this group): ${stats["Display Colour"]}</p>
+                <p style="font-size:0.8em; color: #555;">(In 'All' view, this country might show info from a different priority group)</p>
+            `;
+        }
+    }
+
+    layer.setStyle(styleToApply);
+
+    if (popupContent) {
+        layer.bindPopup(popupContent);
+    } else {
+        if (layer.getPopup()) {
+            layer.unbindPopup();
+        }
     }
   };
 
@@ -76,11 +110,11 @@ const MapComponent = ({ geoJsonData, countryDisplayData, selectedGroup }) => {
         attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
       {geoJsonData && (
-        <GeoJSON 
-          key={selectedGroup} // Force re-render of GeoJSON component when filter changes
-          ref={geoJsonLayerRef} 
-          data={geoJsonData} 
-          onEachFeature={onEachFeature} 
+        <GeoJSON
+          key={selectedGroup + JSON.stringify(geoJsonData)} 
+          ref={geoJsonLayerRef}
+          data={geoJsonData}
+          onEachFeature={onEachFeature}
         />
       )}
     </MapContainer>

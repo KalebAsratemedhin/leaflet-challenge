@@ -16,7 +16,7 @@ const parseDate = (dateStr) => {
   };
   
   
-  export const initialGroupData = [
+  export const initialGroupDataRaw = [
     {
       Group: "Billions",
       "Countries in Group": "USA; Russia",
@@ -225,18 +225,34 @@ const parseDate = (dateStr) => {
     parsedEndDate: parseDate(item["End Date"]),
   }));
   
-  
-  export const countryNameMap = {
-    "USA": "United States of America",
-    "Russia": "Russia",
-    "China": "China",
-    "India": "India",
-    "Nigeria": "Nigeria",
-    "Algeria": "Algeria",
-    "Germany": "Germany",
-    "Ethiopia": "Ethiopia",
-    "Ghana": "Ghana",
-    "Egypt": "Egypt",
-    "Brazil": "Brazil",
-    "Chile": "Chile",
-  };
+
+
+// Process the raw data to include parsed fields
+export const initialGroupData = initialGroupDataRaw.map(item => ({ // Assuming initialGroupDataRaw is the array from your image
+  ...item,
+  parsedCountries: item["Countries in Group"].split(';').map(c => c.trim()).filter(c => c),
+  parsedTimePosted: parseTime(item["Time Posted"]),
+  parsedStartDate: parseDate(item["Start Date"]),
+  parsedEndDate: parseDate(item["End Date"]),
+}));
+
+// Mapping from your data's country names to GeoJSON country names
+export const countryNameMap = {
+  "USA": "United States of America",
+  "Russia": "Russia", 
+  "China": "China",
+  "India": "India",
+  "Nigeria": "Nigeria",
+  "Algeria": "Algeria",
+  "Germany": "Germany",
+  "Ethiopia": "Ethiopia",
+  "Ghana": "Ghana",
+  "Egypt": "Egypt",
+  "Brazil": "Brazil",
+  "Chile": "Chile",
+};
+
+// Create a reverse map: GeoJSON name to Short name
+export const geoJsonToShortNameMap = Object.fromEntries(
+  Object.entries(countryNameMap).map(([short, geo]) => [geo, short])
+);
