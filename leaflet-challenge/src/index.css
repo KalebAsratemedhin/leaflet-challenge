@@ -1,0 +1,39 @@
+
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: sans-serif;
+}
+
+.map-container {
+  height: calc(100vh - 50px); 
+  width: 100%;
+}
+
+.controls {
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+}
+
+.controls label {
+  margin-right: 10px;
+}
+
+.leaflet-popup-content {
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.leaflet-popup-content strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 1.1em;
+  color: #333;
+}
+
+.leaflet-popup-content p {
+  margin: 3px 0;
+}
